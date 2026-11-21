@@ -3,6 +3,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { useMediaDrawer } from "./hooks/useMediaDrawer"
 import type { MediaRecommendation } from "./types/media.types"
 import { StarRating } from "@/components/media/StarRating"
+import { pressable } from "@/lib/tv"
 
 interface MediaRecommendationsProps {
     recommendations: MediaRecommendation[]
@@ -21,7 +22,7 @@ export const MediaRecommendations: React.FC<MediaRecommendationsProps> = ({ reco
                 <CarouselContent className="-ml-4">
                     {recommendations.map((item) => (
                         <CarouselItem key={item.id} className="basis-1/3 pl-4 md:basis-1/5 lg:basis-1/8">
-                            <div className="group cursor-pointer space-y-2" onClick={() => open({ type: item.type, id: item.id })}>
+                            <div className="group cursor-pointer space-y-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => open({ type: item.type, id: item.id })} {...pressable(() => open({ type: item.type, id: item.id }))}>
                                 <div className="relative aspect-auto overflow-hidden rounded-lg bg-muted">
                                     {item.posterUrl || item.backdropUrl ? (
                                         <img

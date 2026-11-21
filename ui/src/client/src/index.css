@@ -292,3 +292,25 @@
 .shelf > * {
     scroll-snap-align: start;
 }
+
+/* ---------- TV mode (remote / D-pad) ---------- */
+html.tv {
+    font-size: 18px; /* readable from the couch */
+}
+html.tv body {
+    cursor: none;
+}
+html.tv :focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 3px;
+    border-radius: 0.5rem;
+}
+/* cards draw their own ring */
+html.tv .group:focus-visible,
+html.tv [role="button"].outline-none:focus-visible {
+    outline: none;
+}
+html.tv * {
+    scroll-margin-top: 6rem;
+    scroll-margin-bottom: 2rem;
+}

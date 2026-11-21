@@ -15,6 +15,7 @@ import { useLibrary } from "@/hooks/use-library"
 import type { NormalizedSubtitle } from "@/components/player/types/source.types"
 import { isForcedLabel, languageFromCode, languageFromLabel, languageName, TRANSLATABLE_SOURCES, TRANSLATABLE_TARGETS } from "@/components/player/utils/languages"
 import { EXTRAS_URL } from "@/lib/reel"
+import { IS_TV } from "@/lib/tv"
 
 // Free multi-language subtitle index (by TMDB id), also used by core's VidRock provider
 const SUBTITLE_INDEX_URL = "https://sub.vdrk.site/v1"
@@ -389,10 +390,27 @@ export function MediaPlayer() {
     const handleMouseMove = () => {
         setShowControls(true)
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
-        controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000)
+        controlsTimeoutRef.current = setTimeout(() => {
+            setShowControls(false)
+            // TV: don't leave focus on a hidden control, so the next ←/→ seeks again
+            const active = document.activeElement as HTMLElement | null
+            if (IS_TV && active?.closest("[data-tv-controls]")) active.blur()
+        }, IS_TV ? 5000 : 3000)
     }
 
     const togglePlay = () => setIsPlaying(!isPlaying)
+
+    // TV: any remote press shows the controls, like moving the mouse does
+    const showControlsRef = useRef(handleMouseMove)
+    useEffect(() => {
+        showControlsRef.current = handleMouseMove
+    })
+    useEffect(() => {
+        if (!IS_TV) return
+        const onKey = () => showControlsRef.current()
+        window.addEventListener("keydown", onKey, true)
+        return () => window.removeEventListener("keydown", onKey, true)
+    }, [])
 
     const handleSeek = (val: number[]) => {
         if (videoRef.current) {
@@ -461,7 +479,7 @@ export function MediaPlayer() {
         )
 
     return (
-        <div ref={containerRef} className="group relative h-screen w-full overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setShowControls(false)}>
+        <div ref={containerRef} data-tv-player className="group relative h-screen w-full overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setShowControls(false)}>
             <video
                 ref={videoRef}
                 className="h-full w-full"

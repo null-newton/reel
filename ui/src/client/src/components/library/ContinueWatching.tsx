@@ -57,15 +57,15 @@ function ContinueCard({ entry }: { entry: ProgressEntry }) {
 
     return (
         <div className="group relative w-[300px] shrink-0 md:w-[340px]">
-            <button onClick={() => navigate(watchPath(entry.type, entry.id, target.season, target.episode))} className="block w-full text-left">
-                <div className="relative aspect-video overflow-hidden rounded-lg bg-muted ring-1 ring-white/5 transition-all duration-300 group-hover:ring-white/20">
+            <button onClick={() => navigate(watchPath(entry.type, entry.id, target.season, target.episode))} className="block w-full text-left outline-none">
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-muted ring-1 ring-white/5 transition-all duration-300 group-hover:ring-white/20 group-focus-within:ring-2 group-focus-within:ring-primary">
                     {entry.backdropUrl ? (
                         <img src={sized(entry.backdropUrl)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
                     ) : (
                         <div className="h-full w-full bg-linear-to-br from-muted to-card" />
                     )}
                     <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
                         <div className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl">
                             <Play className="ml-0.5 size-5 fill-current" />
                         </div>
@@ -85,7 +85,7 @@ function ContinueCard({ entry }: { entry: ProgressEntry }) {
             </button>
             <button
                 onClick={() => removeProgress(entry.type, entry.id)}
-                className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white/80 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 hover:text-white"
+                className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white/80 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:text-white focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={`Remove ${entry.title} from Continue Watching`}
                 title="Remove from Continue Watching"
             >

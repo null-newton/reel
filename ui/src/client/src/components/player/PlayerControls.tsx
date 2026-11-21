@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { formatTime } from "./utils/time"
 import { PlayerSettings } from "./PlayerSettings"
+import { IS_TV, focusEl } from "@/lib/tv"
 
 interface PlayerControlsProps {
     isPlaying: boolean
@@ -75,6 +76,26 @@ export function PlayerControls({
                 return
             }
 
+            if (IS_TV) {
+                // Remote: OK = play/pause, ←/→ = seek, ↑/↓ = into the control bar (the TV has volume keys).
+                // Once a control has focus, the arrows move between controls instead.
+                const inControls = !!target?.closest?.("[data-tv-controls]")
+                const menuOpen = !!document.querySelector('[role="dialog"][data-state="open"], [role="menu"][data-state="open"]')
+                if (inControls || menuOpen || e.defaultPrevented) return
+                if (e.key === "Enter" || e.code === "Space" || e.key === "MediaPlayPause") {
+                    e.preventDefault()
+                    onTogglePlay()
+                    return
+                }
+                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault()
+                    focusEl(document.querySelector<HTMLElement>("[data-tv-controls] [data-tv-autofocus]") ?? document.querySelector<HTMLElement>("[data-tv-controls] button"))
+                    return
+                }
+                if (e.key === "MediaFastForward") return onSeek([Math.min(duration, currentTime + 30)])
+                if (e.key === "MediaRewind") return onSeek([Math.max(0, currentTime - 30)])
+            }
+
             switch (e.code) {
                 case "Space":
                     e.preventDefault()
@@ -119,9 +140,9 @@ export function PlayerControls({
             onDoubleClick={onDoubleClick}
             onWheel={onWheel}
         >
-            <div className="mx-auto w-full space-y-2" onClick={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-                {/* Progress Bar */}
-                <div className="group relative py-2">
+            <div className="mx-auto w-full space-y-2" data-tv-controls onClick={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+                {/* Progress Bar (on TV, seek with ←/→ instead of focusing the slider) */}
+                <div className="group relative py-2" data-tv-skip={IS_TV || undefined}>
                     <Slider value={[currentTime]} max={duration} step={1} onValueChange={onSeek} className="cursor-pointer" />
                 </div>
 
@@ -131,7 +152,7 @@ export function PlayerControls({
                             <Undo width={20} height={20} />
                         </Button>
 
-                        <Button variant="ghost" size="icon" onClick={onTogglePlay} className="text-white hover:bg-white/20" title={isPlaying ? t("controls.pause") : t("controls.play")}>
+                        <Button variant="ghost" size="icon" onClick={onTogglePlay} data-tv-autofocus className="text-white hover:bg-white/20" title={isPlaying ? t("controls.pause") : t("controls.play")}>
                             {isPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current" />}
                         </Button>
 

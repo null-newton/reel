@@ -2,7 +2,7 @@ name: Release
 
 # Ways to run it:
 #  - Actions → Release → Run workflow, pick patch/minor/major: bumps desktop/package.json,
-#    commits, tags vX.Y.Z, builds macOS, Windows and Linux apps and publishes a GitHub Release.
+#    commits, tags vX.Y.Z, builds macOS, Windows, Linux and Android TV apps and publishes a GitHub Release.
 #  - Pick "test": builds from the current commit and keeps the files as workflow artifacts
 #    only (no version bump, no tag, no release). "platforms" limits a test to some OSes.
 #  - Push a tag vX.Y.Z yourself (it must match desktop/package.json).
@@ -17,7 +17,7 @@ on:
       platforms:
         description: Platforms to build (test runs only; a release always builds all)
         type: choice
-        options: [all, mac, win, linux]
+        options: [all, mac, win, linux, tv]
         default: all
   push:
     tags: ["v*.*.*"]
@@ -37,6 +37,8 @@ jobs:
       ref: ${{ steps.v.outputs.ref }}
       publish: ${{ steps.v.outputs.publish }}
       matrix: ${{ steps.m.outputs.matrix }}
+      desktop: ${{ steps.m.outputs.desktop }}
+      tv: ${{ steps.m.outputs.tv }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -91,11 +93,17 @@ jobs:
             ]
             const want = process.env.PLATFORMS
             const include = all.filter((m) => want === "all" || m.name === want)
-            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "matrix=" + JSON.stringify({ include }) + "\n")
+            const out = [
+              "matrix=" + JSON.stringify({ include }),
+              "desktop=" + (include.length > 0),
+              "tv=" + (want === "all" || want === "tv"),
+            ]
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, out.join("\n") + "\n")
           '
 
   build:
     needs: version
+    if: needs.version.outputs.desktop == 'true'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.version.outputs.matrix) }}
@@ -150,15 +158,104 @@ jobs:
             desktop/dist/*.AppImage
             desktop/dist/*.tar.gz
 
+  build-tv:
+    needs: version
+    if: needs.version.outputs.tv == 'true'
+    name: build (android tv)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.ref }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            core/package-lock.json
+            ui/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Bundle core, UI (TV build) and nodejs-mobile
+        run: node tv/scripts/prepare.mjs
+      - name: Build APKs
+        env:
+          KEYSTORE_B64: ${{ secrets.REEL_KEYSTORE_B64 }}
+          REEL_KEYSTORE_PASSWORD: ${{ secrets.REEL_KEYSTORE_PASSWORD }}
+          REEL_KEY_ALIAS: ${{ secrets.REEL_KEY_ALIAS }}
+          REEL_KEY_PASSWORD: ${{ secrets.REEL_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/reel.keystore"
+            export REEL_KEYSTORE_PATH="$RUNNER_TEMP/reel.keystore"
+          else
+            echo "::warning::No REEL_KEYSTORE_B64 secret: the APKs are signed with a throwaway debug key, so they can't be installed over each other."
+          fi
+          gradle -p tv --no-daemon assembleRelease assembleDebug
+          V="${{ needs.version.outputs.version }}"
+          mkdir -p out
+          for f in tv/app/build/outputs/apk/release/*.apk; do
+            abi=$(basename "$f" | sed -E 's/^app-(.*)-release(-unsigned)?\.apk$/\1/')
+            cp "$f" "out/Reel-$V-androidtv-$abi.apk"
+          done
+          cp tv/app/build/outputs/apk/debug/app-x86_64-debug.apk "$RUNNER_TEMP/reel-debug-x86_64.apk"
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reel-tv
+          if-no-files-found: error
+          path: out/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reel-tv-debug-x86_64
+          path: ${{ runner.temp }}/reel-debug-x86_64.apk
+
+  smoke-tv:
+    needs: build-tv
+    name: smoke test (android emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: reel-tv-debug-x86_64
+          path: apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1920x1080
+          script: bash tv/scripts/smoke-test.sh apk/reel-debug-x86_64.apk smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reel-tv-smoke
+          path: smoke/
+
   release:
-    needs: [version, build]
+    needs: [version, build, build-tv]
     if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: out
+          pattern: reel-*
           merge-multiple: true
+      - name: Keep only installers
+        run: find out -type f ! \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.tar.gz" -o -name "*.apk" \) -delete; find out -name "*debug*" -delete; ls -la out
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -170,4 +267,5 @@ jobs:
             --generate-notes \
             --notes "**macOS:** \`mac-arm64\` (Apple Silicon) or \`mac-x64\` (Intel). The app isn't notarized: the first time, right-click Reel.app → Open, or run \`xattr -dr com.apple.quarantine /Applications/Reel.app\`.
           **Windows:** \`win-x64-setup.exe\`. SmartScreen may warn because it isn't signed: More info → Run anyway.
-          **Linux:** \`linux-x86_64.AppImage\` / \`linux-arm64.AppImage\` (chmod +x, then run), or the \`.tar.gz\`."
+          **Linux:** \`linux-x86_64.AppImage\` / \`linux-arm64.AppImage\` (chmod +x, then run), or the \`.tar.gz\`.
+          **Android TV:** \`androidtv-universal.apk\` works everywhere; \`androidtv-armeabi-v7a\` / \`arm64-v8a\` are smaller. Sideload with Downloader or \`adb install\`."

@@ -12,6 +12,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Button } from "@/components/ui/button"
 import { useMediaDrawer } from "@/components/media/drawer/hooks/useMediaDrawer.ts"
 import { useNavigate } from "react-router-dom"
+import { pressable } from "@/lib/tv"
 
 interface MediaEpisodesProps {
     tvId: number
@@ -125,8 +126,9 @@ export const MediaEpisodes: React.FC<MediaEpisodesProps> = ({ tvId, seasons }) =
                         {orderedEpisodes.map((episode) => (
                             <CarouselItem
                                 key={episode.id}
-                                className="basis-full pl-4 transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:cursor-pointer md:basis-1/3 lg:basis-1/4"
+                                className="basis-full pl-4 transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:cursor-pointer focus-visible:scale-[1.02] focus-visible:outline-none md:basis-1/3 lg:basis-1/4 [&:focus-visible_.aspect-video]:ring-2 [&:focus-visible_.aspect-video]:ring-primary"
                                 onClick={() => handleEpisodeSelect(episode)}
+                                {...pressable(() => handleEpisodeSelect(episode))}
                             >
                                 <div className="space-y-2">
                                     <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
@@ -155,7 +157,7 @@ export const MediaEpisodes: React.FC<MediaEpisodesProps> = ({ tvId, seasons }) =
                 <div className="h-100 overflow-x-scroll pr-4">
                     <div className="space-y-4">
                         {orderedEpisodes.map((episode) => (
-                            <div key={episode.id} className="flex gap-4 border-b border-border pb-4 last:border-0" onClick={() => handleEpisodeSelect(episode)}>
+                            <div key={episode.id} className="flex cursor-pointer gap-4 rounded-md border-b border-border pb-4 outline-none last:border-0 focus-visible:ring-2 focus-visible:ring-primary" onClick={() => handleEpisodeSelect(episode)} {...pressable(() => handleEpisodeSelect(episode))}>
                                 <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded bg-muted">
                                     {episode.stillUrl ? (
                                         <img src={episode.stillUrl} alt={episode.name} className="h-full w-full object-cover" />
