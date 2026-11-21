@@ -1,0 +1,74 @@
+{
+  "name": "cinepro-desktop",
+  "productName": "Reel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reel — a quiet desktop library for movies and TV (CinePro Core + UI)",
+  "main": "main.cjs",
+  "scripts": {
+    "build:core": "cd ../core && npm ci --no-audit --no-fund && npm run build",
+    "build:ui": "cd ../ui && npm ci --no-audit --no-fund && NODE_ENV=production VITE_STANDALONE=true VITE_OMSS_API_URL=http://127.0.0.1:47321 VITE_EXTRAS_URL=http://127.0.0.1:47322 VITE_TMDB_API_KEY= npx vite build",
+    "stage": "node scripts/stage.mjs",
+    "prepare:all": "npm run python && npm run build:core && npm run build:ui && npm run stage",
+    "app": "electron .",
+    "bundle": "npm run prepare:all && electron-builder --mac --dir",
+    "dist": "npm run prepare:all && electron-builder",
+    "icon": "electron scripts/make-icon.cjs",
+    "python": "node scripts/fetch-python.mjs"
+  },
+  "build": {
+    "appId": "app.reel.desktop",
+    "productName": "Reel",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "setup.html",
+      "build/icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "stage",
+        "to": "stage"
+      },
+      {
+        "from": "python",
+        "to": "python"
+      },
+      {
+        "from": "services/translate.py",
+        "to": "services/translate.py"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg"
+        },
+        {
+          "target": "zip"
+        }
+      ],
+      "category": "public.app-category.entertainment",
+      "identity": null,
+      "icon": "build/icon.icns",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}

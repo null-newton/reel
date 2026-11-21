@@ -1,0 +1,16 @@
+node_modules/
+.DS_Store
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# original upstream clones of core/ and ui/ (git dirs kept locally only)
+.upstream/
+
+# build output
+core/dist/
+ui/build/
+desktop/stage/
+desktop/dist/
+desktop/python/

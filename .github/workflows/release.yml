@@ -1,0 +1,120 @@
+name: Release
+
+# Two ways to release:
+#  - Actions → Release → Run workflow, pick patch/minor/major: bumps desktop/package.json,
+#    commits, tags vX.Y.Z, builds and publishes.
+#  - Push a tag vX.Y.Z yourself (it must match desktop/package.json).
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - id: v
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+              echo "::error::Run the release from main"; exit 1
+            fi
+            npm --prefix desktop version "$BUMP" --no-git-tag-version > /dev/null
+            V=$(node -p "require('./desktop/package.json').version")
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Release v$V"
+            git tag "v$V"
+            git push origin HEAD:main "v$V"
+          else
+            V="${GITHUB_REF_NAME#v}"
+            P=$(node -p "require('./desktop/package.json').version")
+            if [ "$V" != "$P" ]; then
+              echo "::error::Tag v$V does not match desktop/package.json version $P"; exit 1
+            fi
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15 # Apple Silicon
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            core/package-lock.json
+            ui/package-lock.json
+      - name: Install desktop tooling
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund
+      - name: Bundled Python, core, UI
+        working-directory: desktop
+        run: npm run prepare:all
+      - name: Package Reel
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --mac --${{ matrix.arch }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reel-mac-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Reel $TAG" \
+            --generate-notes \
+            --notes "Download **mac-arm64** for Apple Silicon or **mac-x64** for Intel. The app isn't notarized: the first time, right-click Reel.app → Open, or run \`xattr -dr com.apple.quarantine /Applications/Reel.app\`."

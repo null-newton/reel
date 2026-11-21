@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            core/package-lock.json
+            ui/package-lock.json
+      - name: Build core
+        working-directory: core
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: Build UI
+        working-directory: ui
+        run: |
+          npm ci --no-audit --no-fund
+          NODE_ENV=production VITE_STANDALONE=true VITE_OMSS_API_URL=http://127.0.0.1:47321 VITE_EXTRAS_URL=http://127.0.0.1:47322 npx vite build
+      - name: Check desktop shell
+        run: |
+          node --check desktop/main.cjs
+          node --check desktop/preload.cjs
+          python3 -m py_compile desktop/services/translate.py
