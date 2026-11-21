@@ -205,6 +205,9 @@ jobs:
           done
           cp tv/app/build/outputs/apk/debug/app-x86_64-debug.apk "$RUNNER_TEMP/reel-debug-x86_64.apk"
           ls -la out
+          # show which certificate signed the release APKs (should be the Reel key, not a debug key)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "out/Reel-$V-androidtv-universal.apk" | grep -E "certificate DN|SHA-256"
       - uses: actions/upload-artifact@v4
         with:
           name: reel-tv

@@ -16,3 +16,6 @@ desktop/dist/
 desktop/python/
 __pycache__/
 *.pyc
+
+# Android release signing key (never commit; keep a backup)
+.signing/
