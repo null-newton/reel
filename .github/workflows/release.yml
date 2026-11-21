@@ -1,16 +1,18 @@
 name: Release
 
-# Two ways to release:
+# Ways to run it:
 #  - Actions → Release → Run workflow, pick patch/minor/major: bumps desktop/package.json,
-#    commits, tags vX.Y.Z, builds and publishes.
+#    commits, tags vX.Y.Z, builds macOS, Windows and Linux apps and publishes a GitHub Release.
+#  - Pick "test": builds everything from the current commit and keeps the files as workflow
+#    artifacts only (no version bump, no tag, no release).
 #  - Push a tag vX.Y.Z yourself (it must match desktop/package.json).
 on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump
+        description: Version bump ("test" = build only, publish nothing)
         type: choice
-        options: [patch, minor, major]
+        options: [patch, minor, major, test]
         default: patch
   push:
     tags: ["v*.*.*"]
@@ -27,7 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
-      tag: ${{ steps.v.outputs.tag }}
+      ref: ${{ steps.v.outputs.ref }}
+      publish: ${{ steps.v.outputs.publish }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -37,7 +40,11 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$BUMP" = "test" ]; then
+            V=$(node -p "require('./desktop/package.json').version")
+            echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             if [ "$GITHUB_REF" != "refs/heads/main" ]; then
               echo "::error::Run the release from main"; exit 1
             fi
@@ -48,15 +55,18 @@ jobs:
             git commit -am "Release v$V"
             git tag "v$V"
             git push origin HEAD:main "v$V"
+            echo "ref=v$V" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             V="${GITHUB_REF_NAME#v}"
             P=$(node -p "require('./desktop/package.json').version")
             if [ "$V" != "$P" ]; then
               echo "::error::Tag v$V does not match desktop/package.json version $P"; exit 1
             fi
+            echo "ref=v$V" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
@@ -64,15 +74,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15 # Apple Silicon
-            arch: arm64
-          - os: macos-15-intel
-            arch: x64
+          - { name: mac-arm64, os: macos-15, platform: mac, arch: arm64 }
+          - { name: mac-x64, os: macos-15-intel, platform: mac, arch: x64 }
+          - { name: win-x64, os: windows-latest, platform: win, arch: x64 }
+          - { name: linux-x64, os: ubuntu-latest, platform: linux, arch: x64 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, platform: linux, arch: arm64 }
+    name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ needs.version.outputs.tag }}
+          ref: ${{ needs.version.outputs.ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -91,17 +103,21 @@ jobs:
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder --mac --${{ matrix.arch }} --publish never
+        run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: reel-mac-${{ matrix.arch }}
+          name: reel-${{ matrix.name }}
           if-no-files-found: error
           path: |
             desktop/dist/*.dmg
             desktop/dist/*.zip
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.tar.gz
 
   release:
     needs: [version, build]
+    if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -111,10 +127,12 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.version.outputs.tag }}
+          TAG: ${{ needs.version.outputs.ref }}
         run: |
           gh release create "$TAG" out/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "Reel $TAG" \
             --generate-notes \
-            --notes "Download **mac-arm64** for Apple Silicon or **mac-x64** for Intel. The app isn't notarized: the first time, right-click Reel.app → Open, or run \`xattr -dr com.apple.quarantine /Applications/Reel.app\`."
+            --notes "**macOS:** \`mac-arm64\` (Apple Silicon) or \`mac-x64\` (Intel). The app isn't notarized: the first time, right-click Reel.app → Open, or run \`xattr -dr com.apple.quarantine /Applications/Reel.app\`.
+          **Windows:** \`win-x64-setup.exe\`. SmartScreen may warn because it isn't signed: More info → Run anyway.
+          **Linux:** \`linux-x64.AppImage\` / \`linux-arm64.AppImage\` (chmod +x, then run), or the \`.tar.gz\`."

@@ -101,14 +101,15 @@ function startCore(tmdbApiKey) {
 let extrasProc = null
 function startExtras() {
     const base = app.isPackaged ? process.resourcesPath : __dirname
-    const python = path.join(base, "python", "bin", "python3")
+    const python = process.platform === "win32" ? path.join(base, "python", "python.exe") : path.join(base, "python", "bin", "python3")
     const script = path.join(base, "services", "translate.py")
     if (!fs.existsSync(python)) {
         console.warn(`[extras] no bundled Python at ${python} — run "npm run python"; subtitle translation is off`)
         return
     }
     extrasProc = spawn(python, ["-u", script], {
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"], // stdin closing tells the service Reel is gone
+        windowsHide: true,
         env: {
             ...process.env,
             PYTHONNOUSERSITE: "1",

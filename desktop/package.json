@@ -7,7 +7,7 @@
   "main": "main.cjs",
   "scripts": {
     "build:core": "cd ../core && npm ci --no-audit --no-fund && npm run build",
-    "build:ui": "cd ../ui && npm ci --no-audit --no-fund && NODE_ENV=production VITE_STANDALONE=true VITE_OMSS_API_URL=http://127.0.0.1:47321 VITE_EXTRAS_URL=http://127.0.0.1:47322 VITE_TMDB_API_KEY= npx vite build",
+    "build:ui": "node scripts/build-ui.mjs",
     "stage": "node scripts/stage.mjs",
     "prepare:all": "npm run python && npm run build:core && npm run build:ui && npm run stage",
     "app": "electron .",
@@ -55,17 +55,31 @@
     },
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "tar.gz"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "category": "AudioVideo",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     },
-    "publish": null
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-${version}-win-${arch}-setup.${ext}"
+    }
   },
   "devDependencies": {
     "electron": "^45.4.1",

@@ -12,7 +12,7 @@ How it works:
 npm install
 npm run prepare:all   # fetch Python + translation runtime, build core + ui, stage into ./stage
 npm run app           # run the app in dev
-npm run dist          # build the macOS dmg + zip into ./dist
+npm run dist          # build installers for this OS into ./dist
 ```
 
 ## Subtitle translation

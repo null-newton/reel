@@ -267,9 +267,12 @@ if __name__ == "__main__":
     log(f"listening on http://{HOST}:{PORT} (models: {MODELS_DIR})")
     threading.Thread(target=index, daemon=True).start()  # warm the index
 
-    def watch_parent(parent=os.getppid()):  # exit if Reel goes away without stopping us
-        while os.getppid() == parent:
-            time.sleep(2)
+    def watch_parent():  # Reel holds our stdin open; EOF means it went away (works on every OS)
+        try:
+            while sys.stdin.buffer.read(1024):
+                pass
+        except Exception:
+            pass
         os._exit(0)
 
     threading.Thread(target=watch_parent, daemon=True).start()
