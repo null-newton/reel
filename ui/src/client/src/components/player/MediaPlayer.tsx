@@ -120,6 +120,15 @@ export function MediaPlayer() {
 
         setIsLoading(true)
 
+        // Start playing as soon as the stream is ready (no extra click after "Resolving sources")
+        const autoplay = () => {
+            video
+                .play()
+                .then(() => setIsPlaying(true))
+                .catch(() => setIsPlaying(false))
+        }
+        let nativeReady: (() => void) | null = null
+
         if (selectedSource.type === "hls") {
             if (Hls.isSupported()) {
                 const hls = new Hls({
@@ -131,7 +140,7 @@ export function MediaPlayer() {
                 hlsRef.current = hls
 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    if (isPlaying) video.play().catch(() => setIsPlaying(false))
+                    autoplay()
                     const levels = hls.levels.map((level, index) => ({
                         index,
                         height: level.height,
@@ -178,13 +187,17 @@ export function MediaPlayer() {
                     }
                 })
             } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+                nativeReady = autoplay
                 video.src = selectedSource.url
             }
         } else {
+            nativeReady = autoplay
             video.src = selectedSource.url
         }
+        if (nativeReady) video.addEventListener("loadedmetadata", nativeReady, { once: true })
 
         return () => {
+            if (nativeReady) video.removeEventListener("loadedmetadata", nativeReady)
             if (hlsRef.current) {
                 hlsRef.current.destroy()
                 hlsRef.current = null

@@ -176,7 +176,7 @@ function createWindow() {
         backgroundColor: "#16130f",
         title: "Reel",
         show: false,
-        webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true },
+        webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, autoplayPolicy: "no-user-gesture-required" },
     })
     mainWindow.once("ready-to-show", () => mainWindow.show())
 
