@@ -11,7 +11,9 @@ val reelVersion = (JsonSlurper().parse(rootDir.resolve("../desktop/package.json"
 val reelVersionCode = reelVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
 
 // Release signing from the environment (CI secrets); falls back to the debug key when absent.
-val keystorePath: String? = System.getenv("REEL_KEYSTORE_PATH")
+// (GitHub passes unset secrets as empty strings, so blank counts as missing.)
+fun env(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
+val keystorePath: String? = env("REEL_KEYSTORE_PATH")
 
 android {
     namespace = "app.reel.tv"
@@ -54,9 +56,9 @@ android {
         if (keystorePath != null) {
             create("release") {
                 storeFile = file(keystorePath)
-                storePassword = System.getenv("REEL_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("REEL_KEY_ALIAS")
-                keyPassword = System.getenv("REEL_KEY_PASSWORD") ?: System.getenv("REEL_KEYSTORE_PASSWORD")
+                storePassword = env("REEL_KEYSTORE_PASSWORD")
+                keyAlias = env("REEL_KEY_ALIAS")
+                keyPassword = env("REEL_KEY_PASSWORD") ?: env("REEL_KEYSTORE_PASSWORD")
             }
         }
     }
