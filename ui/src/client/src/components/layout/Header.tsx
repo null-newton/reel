@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useAppSettings } from "@/hooks/use-appsettings.ts"
 import { cn } from "@/lib/utils"
+import { IS_TV } from "@/lib/tv"
 import Favicon from "./Favicon"
 
 const NAV_LINKS = [
@@ -76,7 +77,7 @@ export default function Header() {
                         >
                             <LucideSearch className="size-4" />
                             <span>Search</span>
-                            <kbd className="ml-4 rounded bg-white/10 px-1.5 text-[10px] font-medium text-white/50">⌘K</kbd>
+                            {!IS_TV && <kbd className="ml-4 rounded bg-white/10 px-1.5 text-[10px] font-medium text-white/50">⌘K</kbd>}
                         </button>
                         <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white md:hidden" onClick={() => setShowSearch(!showSearch)} aria-label={t("header:searchPlaceholder")}>
                             <LucideSearch className="size-5" />
