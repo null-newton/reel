@@ -73,14 +73,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # one job per OS; each builds every architecture listed in `archs`
+        # (core + UI are architecture-independent; only the bundled Python differs)
         include:
-          - { name: mac-arm64, os: macos-15, platform: mac, arch: arm64 }
-          - { name: mac-x64, os: macos-15-intel, platform: mac, arch: x64 }
-          - { name: win-x64, os: windows-latest, platform: win, arch: x64 }
-          - { name: linux-x64, os: ubuntu-latest, platform: linux, arch: x64 }
-          - { name: linux-arm64, os: ubuntu-24.04-arm, platform: linux, arch: arm64 }
+          - { name: mac, os: macos-15, platform: mac, archs: "arm64 x64" }
+          - { name: win, os: windows-latest, platform: win, archs: "x64" }
+          - { name: linux, os: ubuntu-latest, platform: linux, archs: "x64 arm64" }
     name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
         with:
@@ -93,17 +96,29 @@ jobs:
             desktop/package-lock.json
             core/package-lock.json
             ui/package-lock.json
+      # host Python, used to install the other architecture's wheels (pip --platform)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install desktop tooling
         working-directory: desktop
         run: npm ci --no-audit --no-fund
-      - name: Bundled Python, core, UI
+      - name: Build core and UI
         working-directory: desktop
-        run: npm run prepare:all
-      - name: Package Reel
+        run: npm run build:core && npm run build:ui && npm run stage
+      - name: Bundle Python and package Reel (${{ matrix.archs }})
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+          HOST_PYTHON: python
+        run: |
+          for arch in ${{ matrix.archs }}; do
+            echo "::group::Reel ${{ matrix.platform }}-$arch"
+            node scripts/fetch-python.mjs --arch "$arch" --force
+            npx electron-builder --${{ matrix.platform }} --$arch --publish never
+            echo "::endgroup::"
+          done
+          ls -la dist
       - uses: actions/upload-artifact@v4
         with:
           name: reel-${{ matrix.name }}
