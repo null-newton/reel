@@ -11,7 +11,7 @@
     "stage": "node scripts/stage.mjs",
     "prepare:all": "npm run python && npm run build:core && npm run build:ui && npm run stage",
     "app": "electron .",
-    "bundle": "npm run prepare:all && electron-builder --mac --dir",
+    "bundle": "npm run prepare:all && electron-builder --dir",
     "dist": "npm run prepare:all && electron-builder",
     "icon": "electron scripts/make-icon.cjs",
     "python": "node scripts/fetch-python.mjs"

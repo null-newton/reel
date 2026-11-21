@@ -5,7 +5,7 @@ offline subtitle translator into one app for macOS, Windows and Linux, with no s
 
 - **Library home**: Continue Watching (with resume and "Up next") and My List.
 - **Subtitles**: many languages from a public subtitle index. A missing language is translated
-  offline on your Mac with Argos Translate models. Your chosen language is remembered.
+  offline on your computer with Argos Translate models. Your chosen language is remembered.
 - **First start**: asks for a free [TMDB API key](https://www.themoviedb.org/settings/api).
 
 ## Download
@@ -34,7 +34,7 @@ cd desktop
 npm ci
 npm run prepare:all   # bundled Python + translator, build core + ui, stage them
 npm run app           # run Reel
-npm run bundle        # unpacked Reel.app in desktop/dist
+npm run bundle        # unpacked app in desktop/dist
 ```
 
 ## Releases
