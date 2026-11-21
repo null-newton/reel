@@ -15,7 +15,7 @@ Get the latest build from [Releases](../../releases):
 - **macOS**: `mac-arm64.dmg` (Apple Silicon) or `mac-x64.dmg` (Intel). It isn't signed with an Apple
   Developer ID, so the first time, right-click **Reel.app → Open**, or run `xattr -dr com.apple.quarantine /Applications/Reel.app`.
 - **Windows**: `win-x64-setup.exe`. SmartScreen may warn because it isn't signed: **More info → Run anyway**.
-- **Linux**: `linux-x64.AppImage` or `linux-arm64.AppImage` (`chmod +x`, then run), or the `.tar.gz`.
+- **Linux**: `linux-x86_64.AppImage` or `linux-arm64.AppImage` (`chmod +x`, then run), or the `.tar.gz`.
 
 ## Repository layout
 
@@ -45,7 +45,7 @@ The version lives in `desktop/package.json`.
 - **From GitHub**: Actions → **Release** → *Run workflow* → choose `patch`, `minor` or `major`.
   The workflow bumps the version, commits it, tags `vX.Y.Z`, builds macOS (Apple Silicon + Intel),
   Windows (x64) and Linux (x64 + arm64), and publishes a GitHub Release with all the installers.
-- **Test build**: pick `test` instead. It builds everything from the current commit and keeps the
+- **Test build**: pick `test` instead (optionally with **platforms** = mac, win or linux). It builds from the current commit and keeps the
   files as workflow artifacts, without changing the version or publishing anything.
 - **From the terminal**: bump `version` in `desktop/package.json`, commit, then
   `git tag v0.2.0 && git push origin main v0.2.0`.

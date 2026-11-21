@@ -170,4 +170,4 @@ jobs:
             --generate-notes \
             --notes "**macOS:** \`mac-arm64\` (Apple Silicon) or \`mac-x64\` (Intel). The app isn't notarized: the first time, right-click Reel.app → Open, or run \`xattr -dr com.apple.quarantine /Applications/Reel.app\`.
           **Windows:** \`win-x64-setup.exe\`. SmartScreen may warn because it isn't signed: More info → Run anyway.
-          **Linux:** \`linux-x64.AppImage\` / \`linux-arm64.AppImage\` (chmod +x, then run), or the \`.tar.gz\`."
+          **Linux:** \`linux-x86_64.AppImage\` / \`linux-arm64.AppImage\` (chmod +x, then run), or the \`.tar.gz\`."
