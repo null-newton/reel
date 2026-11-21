@@ -56,7 +56,10 @@ if (existsSync(python) && !force) {
     const archive = join(root, ".python.tar.gz")
     writeFileSync(archive, Buffer.from(await res.arrayBuffer()))
     // the archive has a top-level "python/" folder; tar ships with macOS, Linux and Windows 10+
-    execFileSync("tar", ["-xzf", archive, "-C", target, "--strip-components", "1"], { stdio: "inherit" })
+    // On Windows use the built-in bsdtar: GNU tar from Git Bash reads "D:\\..." as a remote host
+    const winTar = join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe")
+    const tar = isWin && existsSync(winTar) ? winTar : "tar"
+    execFileSync(tar, ["-xzf", archive, "-C", target, "--strip-components", "1"], { stdio: "inherit" })
     rmSync(archive, { force: true })
 }
 

@@ -3,8 +3,8 @@ name: Release
 # Ways to run it:
 #  - Actions → Release → Run workflow, pick patch/minor/major: bumps desktop/package.json,
 #    commits, tags vX.Y.Z, builds macOS, Windows and Linux apps and publishes a GitHub Release.
-#  - Pick "test": builds everything from the current commit and keeps the files as workflow
-#    artifacts only (no version bump, no tag, no release).
+#  - Pick "test": builds from the current commit and keeps the files as workflow artifacts
+#    only (no version bump, no tag, no release). "platforms" limits a test to some OSes.
 #  - Push a tag vX.Y.Z yourself (it must match desktop/package.json).
 on:
   workflow_dispatch:
@@ -14,6 +14,11 @@ on:
         type: choice
         options: [patch, minor, major, test]
         default: patch
+      platforms:
+        description: Platforms to build (test runs only; a release always builds all)
+        type: choice
+        options: [all, mac, win, linux]
+        default: all
   push:
     tags: ["v*.*.*"]
 
@@ -31,6 +36,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       ref: ${{ steps.v.outputs.ref }}
       publish: ${{ steps.v.outputs.publish }}
+      matrix: ${{ steps.m.outputs.matrix }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -67,18 +73,32 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
+      # one job per OS; each builds every architecture in `archs`
+      # (core + UI are architecture-independent; only the bundled Python differs)
+      - id: m
+        env:
+          BUMP: ${{ inputs.bump }}
+          PLATFORMS: ${{ inputs.platforms || 'all' }}
+        run: |
+          if [ "$BUMP" != "test" ] && [ "$PLATFORMS" != "all" ]; then
+            echo "::error::A release builds every platform; choose platforms=all or bump=test"; exit 1
+          fi
+          node -e '
+            const all = [
+              { name: "mac", os: "macos-15", platform: "mac", archs: "arm64 x64" },
+              { name: "win", os: "windows-latest", platform: "win", archs: "x64" },
+              { name: "linux", os: "ubuntu-latest", platform: "linux", archs: "x64 arm64" },
+            ]
+            const want = process.env.PLATFORMS
+            const include = all.filter((m) => want === "all" || m.name === want)
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "matrix=" + JSON.stringify({ include }) + "\n")
+          '
 
   build:
     needs: version
     strategy:
       fail-fast: false
-      matrix:
-        # one job per OS; each builds every architecture listed in `archs`
-        # (core + UI are architecture-independent; only the bundled Python differs)
-        include:
-          - { name: mac, os: macos-15, platform: mac, archs: "arm64 x64" }
-          - { name: win, os: windows-latest, platform: win, archs: "x64" }
-          - { name: linux, os: ubuntu-latest, platform: linux, archs: "x64 arm64" }
+      matrix: ${{ fromJSON(needs.version.outputs.matrix) }}
     name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     defaults:
