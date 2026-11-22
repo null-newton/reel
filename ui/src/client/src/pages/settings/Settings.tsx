@@ -10,9 +10,13 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 
 import { useAppSettings } from "@/hooks/use-appsettings.ts"
 import { supportedLocales, type SupportedLocales } from "@/hooks/use-appsettings"
-import { useTmdb } from "@/hooks/use-tmdb.ts"
+import { supportedRegions, useTmdb } from "@/hooks/use-tmdb.ts"
 import { useOmss } from "@/hooks/use-omss.ts"
 import { useHistory } from "@/hooks/use-history.ts"
+
+import type { CountryISO3166_1 } from "@lorenzopant/tmdb"
+
+import { maskKey } from "@/lib/strings.utils.ts"
 
 import { Badge } from "@/components/ui/badge.tsx"
 import { Item, ItemContent, ItemHeader } from "@/components/ui/item.tsx"
@@ -36,7 +40,7 @@ export default function Settings() {
 
     const [searchParams, setSearchParams] = useSearchParams()
 
-    const validTabs = ["general", "appearance", "history", "playback", "omss"] as const
+    const validTabs = ["general", "appearance", "history", "playback", "omss", "tmdb"] as const
 
     type Tab = (typeof validTabs)[number]
 
@@ -54,7 +58,7 @@ export default function Settings() {
     const { theme, setTheme } = useTheme()
     const { colorTheme, setColorTheme } = useColorTheme()
 
-    const { locale, autoplayNext, setLocale, setAutoplayNext, standalone } = useAppSettings()
+    const { region, locale, autoplayNext, tmdbApiKey, setLocale, setAutoplayNext, setRegion, standalone } = useAppSettings()
     const tmdb = useTmdb()
 
     const handleLanguageChange = (value: string) => {
@@ -70,6 +74,7 @@ export default function Settings() {
 
     const { valid, baseUrl, setBaseUrl } = useOmss()
     const { clear, history, remove } = useHistory()
+    const { cache } = useTmdb()
 
     return (
         <section className="mx-auto mt-25 min-h-[60vh] max-w-3xl space-y-6 px-4 sm:px-6">
@@ -99,6 +104,7 @@ export default function Settings() {
                     <TabsTrigger value="history">{t("tabs.history")}</TabsTrigger>
                     <TabsTrigger value="playback">{t("tabs.playback")}</TabsTrigger>
                     <TabsTrigger value="omss">{t("tabs.omss")}</TabsTrigger>
+                    <TabsTrigger value="tmdb">{t("tabs.tmdb")}</TabsTrigger>
                 </TabsList>
 
                 {/* ---------------- GENERAL ---------------- */}
@@ -357,6 +363,58 @@ export default function Settings() {
                 </TabsContent>
 
                 {/* ---------------- TMDB ---------------- */}
+                <TabsContent value="tmdb">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t("tmdb.title")}</CardTitle>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="tmdb">{t("tmdb.apiKey")}</Label>
+                                <span className="flex pt-1 text-muted-foreground">{t("tmdb.info")}</span>
+                                <Input disabled id="tmdb" value={maskKey(tmdbApiKey, 10)} />
+                            </div>
+
+                            <div className="mt-3 flex flex-col justify-between md:flex-row">
+                                <div>
+                                    <Label>{t("tmdb.region.cardlabel")}</Label>
+
+                                    <span className="flex py-2 pr-0 text-muted-foreground md:pr-4">
+                                        {t("tmdb.region.info", {
+                                            projectName: t("common:projectName"),
+                                        })}
+                                    </span>
+                                </div>
+
+                                <Select
+                                    value={region}
+                                    onValueChange={(value) => {
+                                        setRegion(value as CountryISO3166_1)
+                                        cache?.clear()
+                                        location.reload()
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full md:w-3/5">
+                                        <SelectValue placeholder={t("tmdb.region.placeholder")} />
+                                    </SelectTrigger>
+
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>{t("tmdb.region.selectlabel")}</SelectLabel>
+                                        </SelectGroup>
+
+                                        {supportedRegions.map((r) => (
+                                            <SelectItem key={r.value} value={r.value}>
+                                                {r.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
         </section>
     )
