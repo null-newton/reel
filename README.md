@@ -14,7 +14,8 @@ There's also a standalone **Android TV** app that runs everything on the TV itse
 Get the latest build from [Releases](../../releases):
 
 - **macOS**: `mac-arm64.dmg` (Apple Silicon) or `mac-x64.dmg` (Intel). It isn't signed with an Apple
-  Developer ID, so the first time, right-click **Reel.app → Open**, or run `xattr -dr com.apple.quarantine /Applications/Reel.app`.
+  Developer ID, so macOS blocks the first start. Open it once, then go to **System Settings → Privacy & Security** and
+  click **Open Anyway** next to Reel. Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/Reel.app`.
 - **Windows**: `win-x64-setup.exe`. SmartScreen may warn because it isn't signed: **More info → Run anyway**.
 - **Linux**: `linux-x86_64.AppImage` or `linux-arm64.AppImage` (`chmod +x`, then run), or the `.tar.gz`.
 - **Android TV**: `androidtv-universal.apk` (or the smaller `armeabi-v7a` / `arm64-v8a` one for your box). Sideload it

@@ -49,9 +49,11 @@
         }
       ],
       "category": "public.app-category.entertainment",
-      "identity": null,
+      "identity": "-",
       "icon": "build/icon.icns",
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "win": {
       "target": [
