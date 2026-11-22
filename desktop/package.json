@@ -1,7 +1,7 @@
 {
   "name": "cinepro-desktop",
   "productName": "Reel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Reel — a quiet desktop library for movies and TV (CinePro Core + UI)",
   "main": "main.cjs",
